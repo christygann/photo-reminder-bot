@@ -1,12 +1,13 @@
 import logging
 from telegram.ext import Application, CommandHandler, ContextTypes
 from telegram import Update
+import os
 
 # ── CONFIGURATION ─────────────────────────────────────────────────────────────
-BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"       # Get this from @BotFather
-GROUP_CHAT_ID = -1001234567890          # Your group chat ID (negative number)
-REMINDER_MESSAGE = "📸 Time to send a photo! Don't forget to share one in the group!"
-REMINDER_INTERVAL_SECONDS = 3600       # 1 hour = 3600 seconds
+BOT_TOKEN = os.environ["BOT_TOKEN"]
+GROUP_CHAT_ID = int(os.environ["GROUP_CHAT_ID"])        # Your group chat ID (negative number)
+REMINDER_MESSAGE = "📸 Time to send a photo!"
+REMINDER_INTERVAL_SECONDS = 4*3600       # 1 hour = 3600 seconds
 # ──────────────────────────────────────────────────────────────────────────────
 
 logging.basicConfig(
