@@ -29,17 +29,17 @@ async def send_reminder(context: ContextTypes.DEFAULT_TYPE) -> None:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /start command — confirms the bot is running."""
     await update.message.reply_text(
-        "✅ Photo reminder bot is running! I'll remind the group every hour to send a photo."
+        "✅ Photo reminder bot is running! I'll remind the group every few hours to send a photo."
     )
 
 
 async def stop_reminders(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /stop command — removes the hourly job."""
-    jobs = context.job_queue.get_jobs_by_name("hourly_reminder")
+    jobs = context.job_queue.get_jobs_by_name("photo_reminder")
     if jobs:
         for job in jobs:
             job.schedule_removal()
-        await update.message.reply_text("⏹ Hourly reminders stopped.")
+        await update.message.reply_text("⏹ Reminders stopped.")
     else:
         await update.message.reply_text("No active reminders found.")
 
@@ -47,16 +47,16 @@ async def stop_reminders(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def start_reminders(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /startreminders command — starts or restarts the hourly job."""
     # Remove any existing jobs first to avoid duplicates
-    for job in context.job_queue.get_jobs_by_name("hourly_reminder"):
+    for job in context.job_queue.get_jobs_by_name("photo_reminder"):
         job.schedule_removal()
 
     context.job_queue.run_repeating(
         send_reminder,
         interval=REMINDER_INTERVAL_SECONDS,
         first=10,  # Send first reminder 10 seconds after command
-        name="hourly_reminder"
+        name="photo_reminder"
     )
-    await update.message.reply_text("▶️ Hourly photo reminders started!")
+    await update.message.reply_text("▶️ Photo reminders started!")
 
 
 def main() -> None:
@@ -73,10 +73,10 @@ def main() -> None:
         send_reminder,
         interval=REMINDER_INTERVAL_SECONDS,
         first=10,  # First reminder 10 seconds after bot starts
-        name="hourly_reminder"
+        name="photo_reminder"
     )
 
-    logger.info("Bot started. Sending reminders every hour.")
+    logger.info("Bot started. Sending reminders every few hours.")
     app.run_polling()
 
 
