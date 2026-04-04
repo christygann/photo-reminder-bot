@@ -1,13 +1,17 @@
+import os
+import asyncio
 import logging
+from dotenv import load_dotenv
 from telegram.ext import Application, CommandHandler, ContextTypes
 from telegram import Update
-import os
+
+load_dotenv()
 
 # ── CONFIGURATION ─────────────────────────────────────────────────────────────
 BOT_TOKEN = os.environ["BOT_TOKEN"]
-GROUP_CHAT_ID = int(os.environ["GROUP_CHAT_ID"])        # Your group chat ID (negative number)
-REMINDER_MESSAGE = "📸 Time to send a photo!"
-REMINDER_INTERVAL_SECONDS = 4*3600       # 1 hour = 3600 seconds
+GROUP_CHAT_ID = int(os.environ["GROUP_CHAT_ID"])
+REMINDER_MESSAGE = "IT'S PHOTO TIME EVERYBODYYYYYY 📸📸📸📸📸📸"
+INTERVAL_HOURS = 4
 # ──────────────────────────────────────────────────────────────────────────────
 
 logging.basicConfig(
@@ -16,69 +20,81 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+reminder_running = False
+reminder_task = None
 
-async def send_reminder(context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send the hourly photo reminder to the group."""
-    await context.bot.send_message(
-        chat_id=GROUP_CHAT_ID,
-        text=REMINDER_MESSAGE
-    )
-    logger.info("Reminder sent to group chat.")
+
+async def reminder_loop(bot) -> None:
+    await asyncio.sleep(10)
+    while reminder_running:
+        try:
+            await bot.send_message(chat_id=GROUP_CHAT_ID, text=REMINDER_MESSAGE)
+            logger.info(f"Reminder sent. Next in {INTERVAL_HOURS} hour(s).")
+        except Exception as e:
+            logger.error(f"Failed to send reminder: {e}")
+        await asyncio.sleep(INTERVAL_HOURS * 3600)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle /start command — confirms the bot is running."""
     await update.message.reply_text(
-        "✅ Photo reminder bot is running! I'll remind the group every few hours to send a photo."
+        "👋 Welcome! Here are the available commands:\n\n"
+        "/startreminders - Start reminders\n"
+        "/stop - Stop reminders\n"
+        "/status - Check current reminder status"
     )
-
-
-async def stop_reminders(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle /stop command — removes the hourly job."""
-    jobs = context.job_queue.get_jobs_by_name("photo_reminder")
-    if jobs:
-        for job in jobs:
-            job.schedule_removal()
-        await update.message.reply_text("⏹ Reminders stopped.")
-    else:
-        await update.message.reply_text("No active reminders found.")
 
 
 async def start_reminders(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle /startreminders command — starts or restarts the hourly job."""
-    # Remove any existing jobs first to avoid duplicates
-    for job in context.job_queue.get_jobs_by_name("photo_reminder"):
-        job.schedule_removal()
+    global reminder_running, reminder_task
 
-    context.job_queue.run_repeating(
-        send_reminder,
-        interval=REMINDER_INTERVAL_SECONDS,
-        first=10,  # Send first reminder 10 seconds after command
-        name="photo_reminder"
+    if reminder_running:
+        await update.message.reply_text("⚠️ Reminders are already running!")
+        return
+
+    reminder_running = True
+    reminder_task = asyncio.create_task(reminder_loop(context.bot))
+    await update.message.reply_text(f"▶️ Reminders started! Sending every {INTERVAL_HOURS} hours.")
+
+
+async def stop_reminders(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    global reminder_running, reminder_task
+
+    if not reminder_running:
+        await update.message.reply_text("⚠️ No reminders are currently running.")
+        return
+
+    reminder_running = False
+    if reminder_task:
+        reminder_task.cancel()
+    await update.message.reply_text("⏹ Reminders stopped.")
+
+
+async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    state = "▶️ Running" if reminder_running else "⏹ Stopped"
+    await update.message.reply_text(
+        f"Status: {state}\n"
+        f"Interval: every {INTERVAL_HOURS} hours"
     )
-    await update.message.reply_text("▶️ Photo reminders started!")
 
 
-def main() -> None:
+async def main() -> None:
+    global reminder_running, reminder_task
+
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # Register command handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("startreminders", start_reminders))
     app.add_handler(CommandHandler("stop", stop_reminders))
+    app.add_handler(CommandHandler("status", status))
 
-    # Schedule the hourly reminder to start automatically on bot launch
-    job_queue = app.job_queue
-    job_queue.run_repeating(
-        send_reminder,
-        interval=REMINDER_INTERVAL_SECONDS,
-        first=10,  # First reminder 10 seconds after bot starts
-        name="photo_reminder"
-    )
-
-    logger.info("Bot started. Sending reminders every few hours.")
-    app.run_polling()
+    async with app:
+        await app.start()
+        reminder_running = True
+        reminder_task = asyncio.create_task(reminder_loop(app.bot))
+        logger.info(f"Bot started. Sending reminders every {INTERVAL_HOURS} hours.")
+        await app.updater.start_polling()
+        await asyncio.Event().wait()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
