@@ -10,8 +10,8 @@ from telegram import Update
 # ── CONFIGURATION ─────────────────────────────────────────────────────────────
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 GROUP_CHAT_ID = int(os.environ["GROUP_CHAT_ID"])
-REMINDER_MESSAGE = "IT'S PHOTO TIME EVERYBODYYYYYY 📸📸📸📸📸📸"
-INTERVAL_HOURS = 5
+REMINDER_MESSAGE = "heyyyyyyyy whatchu doinggg 👉👈👉👈"
+INTERVAL_HOURS = 7
 # ──────────────────────────────────────────────────────────────────────────────
 
 logging.basicConfig(
